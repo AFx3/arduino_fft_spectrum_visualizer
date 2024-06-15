@@ -40,7 +40,7 @@ python3 -m venv venv
 
 ### 3. Install Required Packages
 
-With the virtual environment activated, install the necessary packages using `pip`:
+With the virtual environment activated, install the necessary packages using `pip3`:
 
 ```bash
 pip3 install -r requirements.txt
@@ -55,7 +55,7 @@ Ensure your Arduino is connected to the correct serial port. You may need to mod
 Execute the Python script to start the real-time FFT visualization:
 
 ```bash
-python fft_visualizer.py
+python3 fft_visualizer.py
 ```
 
 
@@ -72,5 +72,3 @@ deactivate
 - Make sure your Arduino is properly programmed to send FFT data to the serial port.
 - Adjust the serial port name in the script to match your system's configuration.
 - The application will prompt you to choose a filter type and, if applicable, a cutoff frequency.
-
-By following these steps, you should be able to set up and run the real-time FFT visualization application in a clean and isolated Python environment.

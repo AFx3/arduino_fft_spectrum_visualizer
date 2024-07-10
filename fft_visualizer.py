@@ -4,27 +4,57 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 from scipy.signal import butter, lfilter
 
-# read from the serial port at 115200 baud rate
-ser = serial.Serial('/dev/ttyACM0', 115200) 
+# Initialize serial port
+ser = serial.Serial('/dev/ttyACM0', 115200)  # Adjust '/dev/ttyACM0' to match your Arduino's serial port
 
-# plot initialization
-fig, ax = plt.subplots()                            # creates a figure and a set of subplots  
-bars = ax.bar(range(32), np.zeros(32))              # creates a bar chart with 32 bars initialized to zero height
+# Parameters
+sampling_rate = 1000
+num_samples = 128
+nyquist_freq = sampling_rate / 2
+frequencies = np.fft.fftfreq(num_samples, d=1/sampling_rate)[:num_samples // 2]
 
-
-# function to read FFT data from the serial port
 def get_fft_data():
     try:
-        # read a line from the serial port, decodes it from UTF-8, and strips any whitespace
         line = ser.readline().decode('utf-8').strip()
-        # split the line into individual strings, converts them to floats, stores them in a list
         data = list(map(float, line.split()))
-        if len(data) == 32:   
+        if len(data) == num_samples // 2:
             return data
         else:
             return None
-    except:
+    except Exception as e:
+        print(f"Error reading serial data: {e}")
         return None
+
+def update(frame):
+    data = None
+    while data is None:
+        data = get_fft_data()
+    
+    if filter_choice == 1:
+        data = highpass_filter(data, cutoff_freq, sampling_rate)
+        ax.set_title('FFT of Microphone Input - High-Pass Filter Applied')
+    elif filter_choice == 2:
+        data = lowpass_filter(data, cutoff_freq, sampling_rate)
+        ax.set_title('FFT of Microphone Input - Low-Pass Filter Applied')
+    else:
+        ax.set_title('FFT of Microphone Input - Raw Signal')
+    
+    line.set_ydata(data)
+    return line,
+
+# Plot initialization
+fig, ax = plt.subplots()
+line, = ax.plot(frequencies, np.zeros(num_samples // 2))
+ax.set_ylim(0, 200)
+ax.set_xlim(0, nyquist_freq)
+ax.set_xlabel('Frequency (Hz)')
+ax.set_ylabel('Amplitude')
+ax.set_title('Real-Time FFT of Microphone Input')
+
+
+
+
+
 
 def butter_highpass(cutoff, fs, order=5):
     nyq = 0.5 * fs                                              # Nyquist frequency
@@ -49,44 +79,18 @@ def lowpass_filter(data, cutoff, fs, order=5):
     y = lfilter(b, a, data)
     return y
 
-# function to update the heights of the bars (animation)
-def update(frame):
-    data = None
-    # read data until a full frame is received
-    while data is None:
-        # get the FFT data
-        data = get_fft_data()
-    
-    if filter_choice == 1:
-        data = highpass_filter(data, cutoff_freq, sampling_rate)
-    elif filter_choice == 2:
-        data = lowpass_filter(data, cutoff_freq, sampling_rate)
-    
-    # update the heights of the bars in the plot
-    for bar, height in zip(bars, data):
-        bar.set_height(height)
-    return bars                                                 # return the updated plot
-
-# set plot parameters
-ax.set_ylim(0, 10000) 
-ax.set_xlabel('Frequency Bin')
-ax.set_ylabel('Amplitude')
-ax.set_title('Real-Time FFT of Microphone Input')
 
 def main():
-    global filter_choice, cutoff_freq, sampling_rate
+    global filter_choice, cutoff_freq
 
     filter_choice = int(input("Enter 0 to see the sampled signal, 1 for high-pass filter, 2 for low-pass filter: "))
     
     if filter_choice in [1, 2]:
         cutoff_freq = float(input("Enter the cutoff frequency in Hz (must be less than 500 Hz): "))
-        if cutoff_freq >= 500:
+        if cutoff_freq >= nyquist_freq:
             raise ValueError("Cutoff frequency must be less than half of the sampling rate (500 Hz).")
-        sampling_rate = 1000 
     
-    # update the plot every 100 ms
-    ani = FuncAnimation(fig, update, blit=True, interval=100, cache_frame_data=False)  
-
+    ani = FuncAnimation(fig, update, blit=True, interval=100, cache_frame_data=False)
     plt.show()
 
 if __name__ == "__main__":

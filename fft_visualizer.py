@@ -1,18 +1,29 @@
-import serial
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.animation import FuncAnimation
-from scipy.signal import butter, lfilter
+'''
+This script allow to read FFT data from an Arduino over a serial connection, processes the data, and visualizes it using Matplotlib. 
+It also allows applying high-pass or low-pass filters to the data before visualization
+'''
+import serial                                       # used for serial communication with the Arduino
+import matplotlib.pyplot as plt                     # used for plotting
+import numpy as np                                  # used for numerical operations
+from matplotlib.animation import FuncAnimation      # used for real-time animation
+from scipy.signal import butter, lfilter            # used for signal processing
 
 # Initialize serial port
 ser = serial.Serial('/dev/ttyACM0', 115200)  # Adjust '/dev/ttyACM0' to match your Arduino's serial port
+'''
+port linux: /dev/ttyACM0
+port windows: COM3
+'''
 
-# Parameters
-sampling_rate = 1000
-num_samples = 128
-nyquist_freq = sampling_rate / 2
-frequencies = np.fft.fftfreq(num_samples, d=1/sampling_rate)[:num_samples // 2]
+# Parameters: MUST MATCH THE ARDUINO CODE
+sampling_rate = 1000    # in Hz, same as the Arduino code
+num_samples = 128       # 128 samples, same as the Arduino code
+max_freq_nyquist = sampling_rate / 2 # MAX FREQUENC_NSQ
+# evaluate freq interval
+frequencies = np.fft.fftfreq(num_samples, d=1/sampling_rate)[:num_samples // 2] # array of frequencies for the FFT plot
 
+
+# reads a line of data from the serial port, decodes it, and splits it into a list of floats
 def get_fft_data():
     try:
         line = ser.readline().decode('utf-8').strip()
@@ -24,6 +35,11 @@ def get_fft_data():
     except Exception as e:
         print(f"Error reading serial data: {e}")
         return None
+
+
+# update function calls get_fft_data() to read data from the serial port until valid data is received
+# applies a high-pass or low-pass filter based on the filter_choice
+# updates the plot with the new data
 
 def update(frame):
     data = None
@@ -39,14 +55,19 @@ def update(frame):
     else:
         ax.set_title('FFT of Microphone Input - Raw Signal')
     
-    line.set_ydata(data)
+    line.set_ydata(data) # updates the y-data of the plot
+    # return the updated line for the animation.
     return line,
 
-# Plot initialization
-fig, ax = plt.subplots()
-line, = ax.plot(frequencies, np.zeros(num_samples // 2))
+
+### plot initialization
+
+fig, ax = plt.subplots()                                   # generate a new figure and axis for the plot
+line, = ax.plot(frequencies, np.zeros(num_samples // 2))   # initializes a line plot with the frequencies array on the x-axis and an array of zeros on the y-axis 
+
+# set the y-axis limits to 0-200 and the x-axis limits to 0-Nyquist frequency (500 Hz) and set the axis labels and the initial title of the plot
 ax.set_ylim(0, 200)
-ax.set_xlim(0, nyquist_freq)
+ax.set_xlim(0, max_freq_nyquist)
 ax.set_xlabel('Frequency (Hz)')
 ax.set_ylabel('Amplitude')
 ax.set_title('Real-Time FFT of Microphone Input')
@@ -54,11 +75,9 @@ ax.set_title('Real-Time FFT of Microphone Input')
 
 
 
-
-
 def butter_highpass(cutoff, fs, order=5):
-    nyq = 0.5 * fs                                              # Nyquist frequency
-    normal_cutoff = cutoff / nyq                                # normalize the cutoff frequency    
+    max_nyq = 0.5 * fs                                              # Nyquist frequency
+    normal_cutoff = cutoff / max_nyq                                # normalize the cutoff frequency    
     # create a high-pass filter with a Butterworth design
     b, a = butter(order, normal_cutoff, btype='high', analog=False) 
     return b, a                                                 # return the numerator (b) and denominator (a) polynomials of the IIR filter
@@ -69,8 +88,8 @@ def highpass_filter(data, cutoff, fs, order=5):                 # apply the high
     return y                                                    # return the filtered data
 
 def butter_lowpass(cutoff, fs, order=5):
-    nyq = 0.5 * fs
-    normal_cutoff = cutoff / nyq
+    max_nyq = 0.5 * fs 
+    normal_cutoff = cutoff / max_nyq
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     return b, a
 
@@ -87,7 +106,7 @@ def main():
     
     if filter_choice in [1, 2]:
         cutoff_freq = float(input("Enter the cutoff frequency in Hz (must be less than 500 Hz): "))
-        if cutoff_freq >= nyquist_freq:
+        if cutoff_freq >= max_freq_nyquist:
             raise ValueError("Cutoff frequency must be less than half of the sampling rate (500 Hz).")
     
     ani = FuncAnimation(fig, update, blit=True, interval=100, cache_frame_data=False)

@@ -72,3 +72,7 @@ deactivate
 - Make sure your Arduino is properly programmed to send FFT data to the serial port.
 - Adjust the serial port name in the script to match your system's configuration.
 - The application will prompt you to choose a filter type and, if applicable, a cutoff frequency.
+- FIXED PARAMENTERS BETWEEN THE SKETCH and PYTHON SCRIPT:
+  - sampling rate
+  - number of samples
+  - bauds

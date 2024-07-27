@@ -1,14 +1,14 @@
 #include <arduinoFFT.h>
 
 // consts
-#define SAMPLES 64               // # samples, must be  even       
+#define SAMPLES 128               // # samples, must be  even       
 #define SAMPLING_FREQUENCY 1000   // sampling max feq 1 Khz, so sampled signal max 500 Hz
 
 
 ArduinoFFT<double> FFT = ArduinoFFT<double>();
 
 unsigned int sampling_period_us;  // will be evaluated according to SAMPLING_FREQUENCY (ms)
-unsigned long microseconds;       // save current time in ms
+unsigned long microseconds;       // save current time in us
 
 // Vreal contains samples at the end the spectrum
 // VImag for imaginary part
@@ -24,7 +24,7 @@ void loop() {
   // sampling
   for (int i = 0; i < SAMPLES; i++) {
     
-    // save time in current ms to set up sempling to get regular
+    // save time in current us to set up sempling to get regular
     microseconds = micros();    
     
     vReal[i] = analogRead(A0); // read samples form A0 pin
